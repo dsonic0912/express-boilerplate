@@ -8,6 +8,7 @@ A modern, production-ready Express.js boilerplate built with TypeScript, featuri
 - **Express 5**: Latest version of Express.js framework
 - **Modern ES Modules**: Uses ES modules with import/export syntax
 - **Path Mapping**: Clean imports using `#` prefix for internal modules
+- **Input Validation**: Schema validation with Zod for type-safe request validation
 - **Error Handling**: Centralized error handling middleware
 - **Testing**: Comprehensive testing setup with Vitest and Supertest
 - **Code Quality**: Prettier for code formatting
@@ -160,11 +161,64 @@ interface Config {
 }
 ```
 
+### Input Validation with Zod
+The project includes Zod for runtime type validation and schema definition:
+```typescript
+import { z } from 'zod';
+
+// Define validation schemas
+const userSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  age: z.number().min(0).max(120)
+});
+
+// Use in controllers
+export const createUser = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = userSchema.parse(req.body);
+    // Process validated data...
+  } catch (error) {
+    next(error); // Zod validation errors are automatically handled
+  }
+};
+```
+
 ## 🔧 Configuration
 
 ### Environment Variables
 - `PORT`: Server port (default: 3000)
 - `NODE_ENV`: Environment mode (default: development)
+
+### Validation with Zod
+Zod provides runtime type checking and validation for your API endpoints. Benefits include:
+- **Type Safety**: Automatic TypeScript type inference from schemas
+- **Runtime Validation**: Catch invalid data at runtime
+- **Error Messages**: Detailed validation error messages
+- **Schema Composition**: Reusable and composable validation schemas
+
+Example validation middleware:
+```typescript
+import { z } from 'zod';
+import { Request, Response, NextFunction } from 'express';
+
+export const validateBody = (schema: z.ZodSchema) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      req.body = schema.parse(req.body);
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: error.errors
+        });
+      }
+      next(error);
+    }
+  };
+};
+```
 
 ### TypeScript Configuration
 - **tsconfig.json**: Main TypeScript configuration
@@ -205,6 +259,7 @@ This project is licensed under the ISC License.
 
 ### Production Dependencies
 - **express**: Web framework for Node.js
+- **zod**: TypeScript-first schema validation library
 
 ### Development Dependencies
 - **typescript**: TypeScript compiler

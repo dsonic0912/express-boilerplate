@@ -3,6 +3,6 @@ import { helloWorld } from "#controllers/helloworld.js";
 
 const router = Router();
 
-router.get("/", helloWorld);
+router.get("/:name", helloWorld);
 
 export default router;
