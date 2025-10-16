@@ -149,13 +149,14 @@ npm run coverage
 ```typescript
 import { describe, expect, it } from "vitest";
 import request from "supertest";
+import app from "#index.js";
 
 describe("Hello World", () => {
   it("should return Hello World", async () => {
-    const response = await request("http://localhost:3000").get("/helloworld");
+    const response = await request(app).get("/helloworld/John");
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      message: "Hello World Again!",
+      message: "Hello John Again!",
     });
   });
 });
@@ -204,7 +205,7 @@ export async function verifyConnection(): Promise<void> {
 ```
 
 ### Authentication System
-JWT-based authentication with secure password hashing:
+JWT-based authentication with secure password hashing and cookie management:
 ```typescript
 // Password hashing service
 export class Password {
@@ -221,8 +222,28 @@ export class Password {
   }
 }
 
-// JWT token creation
+// JWT token creation and cookie setting
 const userJwt = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_KEY!);
+res.cookie("sessionToken", userJwt, {
+  httpOnly: true,
+  secure: true,
+  maxAge: 3600000, // 1 hour
+});
+
+// Current user verification
+export const currentUser = (req: Request, res: Response) => {
+  const sessionToken = req.cookies.sessionToken;
+  if (!sessionToken) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const payload = jwt.verify(sessionToken, process.env.JWT_KEY!);
+    res.send({ currentUser: payload });
+  } catch (error) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+};
 ```
 
 ### Input Validation with Zod
@@ -309,6 +330,8 @@ Example response:
 ### Authentication
 - **POST** `/auth/signup` - Register a new user
 - **POST** `/auth/signin` - Sign in an existing user
+- **GET** `/auth/signout` - Sign out the current user
+- **GET** `/auth/me` - Get current user information
 
 #### Signup Request Body:
 ```json
@@ -335,6 +358,23 @@ Example response:
 }
 ```
 
+#### Current User Response (`GET /auth/me`):
+```json
+{
+  "currentUser": {
+    "id": 1,
+    "email": "user@example.com"
+  }
+}
+```
+
+#### Sign Out Response (`GET /auth/signout`):
+```json
+{
+  "message": "Signed out"
+}
+```
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -358,6 +398,7 @@ This project is licensed under the ISC License.
 - **pg**: PostgreSQL client for Node.js
 - **jsonwebtoken**: JWT implementation for authentication
 - **cookie-session**: Cookie-based session middleware
+- **cookie-parser**: Cookie parsing middleware for Express
 - **crypto**: Node.js crypto module for password hashing
 
 ### Development Dependencies
@@ -372,6 +413,7 @@ This project is licensed under the ISC License.
 - **@types/pg**: TypeScript definitions for PostgreSQL
 - **@types/jsonwebtoken**: TypeScript definitions for JWT
 - **@types/cookie-session**: TypeScript definitions for cookie-session
+- **@types/cookie-parser**: TypeScript definitions for cookie-parser
 - **node-pg-migrate**: Database migration tool for PostgreSQL
 
 ## 🚀 Deployment

@@ -74,3 +74,28 @@ export const signin = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Failed to sign in" });
   }
 };
+
+export const signout = (req: Request, res: Response) => {
+  res.cookie("sessionToken", "", {
+    httpOnly: true,
+    secure: true,
+    maxAge: 0,
+  });
+  res.status(200).json({ message: "Signed out" });
+};
+
+
+export const currentUser = (req: Request, res: Response) => {
+  const sessionToken = req.cookies.sessionToken;
+
+  if (!sessionToken) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const playload = jwt.verify(sessionToken, process.env.JWT_KEY!);
+    res.send({ currentUser: playload });
+  } catch (error) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+};
