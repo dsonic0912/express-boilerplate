@@ -9,6 +9,10 @@ A modern, production-ready Express.js boilerplate built with TypeScript, featuri
 - **Modern ES Modules**: Uses ES modules with import/export syntax
 - **Path Mapping**: Clean imports using `#` prefix for internal modules
 - **Input Validation**: Schema validation with Zod for type-safe request validation
+- **Authentication**: JWT-based authentication with secure cookie sessions
+- **Database**: PostgreSQL integration with connection pooling
+- **Migrations**: Database schema management with node-pg-migrate
+- **Password Security**: Secure password hashing using Node.js crypto
 - **Error Handling**: Centralized error handling middleware
 - **Testing**: Comprehensive testing setup with Vitest and Supertest
 - **Code Quality**: Prettier for code formatting
@@ -25,13 +29,22 @@ express_boilerplate/
 │   ├── config/             # Configuration files
 │   │   └── config.ts
 │   ├── controllers/        # Route controllers
-│   │   └── helloworld.ts
+│   │   ├── auth.ts         # Authentication controllers
+│   │   └── helloworld.ts   # Hello world controller
+│   ├── db/                 # Database configuration
+│   │   └── db.ts           # PostgreSQL connection pool
 │   ├── middlewares/        # Express middlewares
-│   │   └── errorHandler.ts
+│   │   └── errorHandler.ts # Global error handler
 │   ├── routes/             # Route definitions
-│   │   └── helloworld.ts
+│   │   ├── auth.ts         # Authentication routes
+│   │   └── helloworld.ts   # Hello world routes
+│   ├── schemas/            # Zod validation schemas
+│   │   └── user.ts         # User schema definitions
+│   ├── services/           # Business logic services
+│   │   └── password.ts     # Password hashing service
 │   ├── index.ts            # Express app setup
 │   └── server.ts           # Server entry point
+├── migrations/             # Database migration files
 ├── dist/                   # Compiled JavaScript output
 ├── .env                    # Environment variables
 ├── .prettierrc             # Prettier configuration
@@ -44,6 +57,7 @@ express_boilerplate/
 ## 🛠️ Prerequisites
 
 - Node.js 18 or higher
+- PostgreSQL 12 or higher
 - npm, yarn, or pnpm
 
 ## 📦 Installation
@@ -65,6 +79,17 @@ cp .env.example .env  # If you have an example file
 # Or create .env with:
 # PORT=3000
 # NODE_ENV=development
+# DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+# JWT_KEY=your_jwt_secret_key
+```
+
+4. Set up the database:
+```bash
+# Create a PostgreSQL database
+createdb your_database_name
+
+# Run migrations
+npm run migrate up
 ```
 
 ## 🚀 Getting Started
@@ -99,6 +124,7 @@ npm start
 | `npm run test:run` | Run tests once |
 | `npm run test:ui` | Run tests with UI interface |
 | `npm run coverage` | Run tests with coverage report |
+| `npm run migrate` | Run database migrations |
 
 ## 🧪 Testing
 
@@ -161,6 +187,44 @@ interface Config {
 }
 ```
 
+### Database Architecture
+PostgreSQL integration with connection pooling and migrations:
+```typescript
+// Database connection with pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Connection verification
+export async function verifyConnection(): Promise<void> {
+  const client = await pool.connect();
+  console.log('✅ Connected to PostgreSQL database');
+  client.release();
+}
+```
+
+### Authentication System
+JWT-based authentication with secure password hashing:
+```typescript
+// Password hashing service
+export class Password {
+  static async toHash(password: string): Promise<string> {
+    const salt = randomBytes(8).toString("hex");
+    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+    return `${buf.toString("hex")}.${salt}`;
+  }
+
+  static async compare(storedPassword: string, suppliedPassword: string): Promise<boolean> {
+    const [hashedPassword, salt] = storedPassword.split(".");
+    const buf = (await scryptAsync(suppliedPassword, salt, 64)) as Buffer;
+    return buf.toString("hex") === hashedPassword;
+  }
+}
+
+// JWT token creation
+const userJwt = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_KEY!);
+```
+
 ### Input Validation with Zod
 The project includes Zod for runtime type validation and schema definition:
 ```typescript
@@ -189,6 +253,8 @@ export const createUser = (req: Request, res: Response, next: NextFunction) => {
 ### Environment Variables
 - `PORT`: Server port (default: 3000)
 - `NODE_ENV`: Environment mode (default: development)
+- `DATABASE_URL`: PostgreSQL connection string
+- `JWT_KEY`: Secret key for JWT token signing
 
 ### Validation with Zod
 Zod provides runtime type checking and validation for your API endpoints. Benefits include:
@@ -231,12 +297,41 @@ export const validateBody = (schema: z.ZodSchema) => {
 ## 📚 API Endpoints
 
 ### Hello World
-- **GET** `/helloworld` - Returns a hello world message
+- **GET** `/helloworld/:name` - Returns a personalized hello world message
 
 Example response:
 ```json
 {
-  "message": "Hello World Again!"
+  "message": "Hello John Again!"
+}
+```
+
+### Authentication
+- **POST** `/auth/signup` - Register a new user
+- **POST** `/auth/signin` - Sign in an existing user
+
+#### Signup Request Body:
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword123"
+}
+```
+
+#### Signin Request Body:
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword123"
+}
+```
+
+#### Authentication Response:
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "created_at": "2024-01-01T00:00:00.000Z"
 }
 ```
 
@@ -260,6 +355,10 @@ This project is licensed under the ISC License.
 ### Production Dependencies
 - **express**: Web framework for Node.js
 - **zod**: TypeScript-first schema validation library
+- **pg**: PostgreSQL client for Node.js
+- **jsonwebtoken**: JWT implementation for authentication
+- **cookie-session**: Cookie-based session middleware
+- **crypto**: Node.js crypto module for password hashing
 
 ### Development Dependencies
 - **typescript**: TypeScript compiler
@@ -270,13 +369,29 @@ This project is licensed under the ISC License.
 - **@types/express**: TypeScript definitions for Express
 - **@types/node**: TypeScript definitions for Node.js
 - **@types/supertest**: TypeScript definitions for Supertest
+- **@types/pg**: TypeScript definitions for PostgreSQL
+- **@types/jsonwebtoken**: TypeScript definitions for JWT
+- **@types/cookie-session**: TypeScript definitions for cookie-session
+- **node-pg-migrate**: Database migration tool for PostgreSQL
 
 ## 🚀 Deployment
 
 This boilerplate is ready for deployment to various platforms:
 
-1. **Build the project**: `npm run build`
-2. **Set environment variables** on your hosting platform
-3. **Start the server**: `npm start`
+1. **Set up PostgreSQL database** on your hosting platform
+2. **Set environment variables** on your hosting platform:
+   - `DATABASE_URL`: PostgreSQL connection string
+   - `JWT_KEY`: Secret key for JWT signing
+   - `PORT`: Server port
+   - `NODE_ENV`: Set to "production"
+3. **Run database migrations**: `npm run migrate up`
+4. **Build the project**: `npm run build`
+5. **Start the server**: `npm start`
 
 The compiled JavaScript will be in the `dist` directory.
+
+### Popular Deployment Platforms
+- **Heroku**: Supports PostgreSQL add-on and automatic deployments
+- **Railway**: Easy PostgreSQL setup with environment variable management
+- **Vercel**: Requires serverless PostgreSQL (like Neon or PlanetScale)
+- **DigitalOcean App Platform**: Supports managed PostgreSQL databases
